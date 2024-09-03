@@ -38,11 +38,7 @@ async function sendEmails(emails,subject, content)
     {
         if (error)
         {
-          	console.log(error);
-        }
-        else
-        {
-          	console.log('Email sent: ' + info.response);
+          	throw Error(error);
         }
     });
 }

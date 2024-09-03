@@ -5,4 +5,4 @@ create table company_request
     primary key(name,author_id),
     foreign key author_id references author(id),
 );
-insert into request values('Z Scaler',1);
+insert into company_request values('Z Scaler',1);

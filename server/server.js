@@ -189,6 +189,7 @@ app.post("/company/request/reject", async (request,response)=>
 //CompanyRequest service ends here
 
 //BlogRequest service starts here
+//This method displays all the requests for the blogs
 app.get("/blog/request/getAll", async (request,response)=>
 {
     try
@@ -203,6 +204,7 @@ app.get("/blog/request/getAll", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+//This method adds a request for the blog
 app.post("/blog/request/add", async (request,response)=>
 {
     try
@@ -229,6 +231,7 @@ app.post("/blog/request/add", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+//This service helps admin to accept a blog
 app.post("/blog/request/accept", async (request,response)=>
 {
     try
@@ -244,6 +247,7 @@ app.post("/blog/request/accept", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+//This service helps to reject the request for the blog
 app.post("/blog/request/reject", async (request,response)=>
 {
     try
