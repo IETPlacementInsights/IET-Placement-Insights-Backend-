@@ -46,43 +46,6 @@ app.get("/company/getAll",async (request,response)=>
     }
 });
 
-//This service helps to add company to database
-app.post("/company/add",async (request,response)=>
-{
-    try
-    {
-        var name = request.body.name;
-        var company = new Entities.Company(-1,name);
-        var manager = new Manager.Company();
-        company = await manager.add(company); 
-        response.send({"success" : true, "result" : company});
-    }
-    catch(err)
-    {
-        console.log(err);
-        response.send({"success" : false, "error" : err.message});
-    }
-});
-
-//This service helps to update data of an existing company in database
-app.put("/company/update",async (request,response)=>
-{
-    try
-    {
-        var name = request.body.name;
-        var id = request.body.id;
-        var company = new Entities.Company(id,name);
-        var manager = new Manager.Company();
-        await manager.update(company);
-        response.send({"success" : true});
-    }
-    catch(err)
-    {
-        console.log(err);
-        response.send({"success" : false, "error" : err.message});
-    }
-});
-
 //This service helps to delete an existing company's data from database
 app.delete("/company/delete", async (request,response)=>
 {
@@ -118,55 +81,6 @@ app.get("/blog/getAll/:companyId",async (request,response)=>
     {
         console.log(err);
         response.send({"success" : false, "error" : err.message});
-    }
-});
-
-//This service adds a blog
-app.post("/blog/add",async (request,response)=>
-{
-    try
-    {
-        var authorEmail = request.body.authorEmail;
-        var authorName = request.body.authorName;
-        var content = request.body.content;
-        var selectionStatus = request.body.selectionStatus;
-        var companyId = request.body.companyId;
-        var role = request.body.role;
-        var company = new Entities.Company(companyId,"");
-        var manager = new Manager.Author();
-        var author = await manager.getByEmail(authorEmail);
-        if(author == null)
-        {
-            author = await manager.add(new Entities.Author(0,authorEmail,authorName));
-        }
-        manager = new Manager.Blog();
-        var blog = await manager.add(new Entities.Blog(0,company,content,selectionStatus,author,role));
-        response.send({"success" : true, "result" : blog});
-    }
-    catch(err)
-    {
-        console.log(err);
-        response.send({"success" : false, "error" : err.message});
-    }
-});
-
-//This service updates the blog
-app.put("/blog/update", async (request,response)=>
-{
-    try
-    {
-        var id = request.body.id;
-        var content = request.body.content;
-        var selectionStatus = request.body.selectionStatus;
-        var manager = new Manager.Blog();
-        var blog = new Entities.Blog(id,null,content,selectionStatus,null,null);
-        await manager.update(blog);
-        response.send({"success": true});
-    }
-    catch(err)
-    {
-        console.log(err);
-        response.send({"success" : false, "error" : err.message})
     }
 });
 
@@ -360,3 +274,94 @@ app.listen(5050,(err)=>
     //else we display this
     console.log("Server Started on PORT : 5050");
 });
+
+
+/*
+These are the Part of the apis which are not in use
+These API's are updated and their functionalities are changed.
+//This service updates the blog
+app.put("/blog/update", async (request,response)=>
+{
+    try
+    {
+        var id = request.body.id;
+        var content = request.body.content;
+        var selectionStatus = request.body.selectionStatus;
+        var manager = new Manager.Blog();
+        var blog = new Entities.Blog(id,null,content,selectionStatus,null,null);
+        await manager.update(blog);
+        response.send({"success": true});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message})
+    }
+});
+
+//This service adds a blog
+app.post("/blog/add",async (request,response)=>
+{
+    try
+    {
+        var authorEmail = request.body.authorEmail;
+        var authorName = request.body.authorName;
+        var content = request.body.content;
+        var selectionStatus = request.body.selectionStatus;
+        var companyId = request.body.companyId;
+        var role = request.body.role;
+        var company = new Entities.Company(companyId,"");
+        var manager = new Manager.Author();
+        var author = await manager.getByEmail(authorEmail);
+        if(author == null)
+        {
+            author = await manager.add(new Entities.Author(0,authorEmail,authorName));
+        }
+        manager = new Manager.Blog();
+        var blog = await manager.add(new Entities.Blog(0,company,content,selectionStatus,author,role));
+        response.send({"success" : true, "result" : blog});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+
+//This service helps to update data of an existing company in database
+app.put("/company/update",async (request,response)=>
+{
+    try
+    {
+        var name = request.body.name;
+        var id = request.body.id;
+        var company = new Entities.Company(id,name);
+        var manager = new Manager.Company();
+        await manager.update(company);
+        response.send({"success" : true});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+
+//This service helps to add company to database
+app.post("/company/add",async (request,response)=>
+{
+    try
+    {
+        var name = request.body.name;
+        var company = new Entities.Company(-1,name);
+        var manager = new Manager.Company();
+        company = await manager.add(company); 
+        response.send({"success" : true, "result" : company});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+*/
