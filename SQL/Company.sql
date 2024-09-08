@@ -4,7 +4,6 @@ that visited the campus for the recruitments
 */
 create table company
 (
-    id serial primary key,
-    name text unique
+    id int auto_increment primary key,
+    name varchar(100) unique not null
 );
-insert into company (name) values ('Carwale');

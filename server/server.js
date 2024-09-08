@@ -22,12 +22,19 @@ var Manager = require('./../data layer/Manager');
 var ejs = require('ejs');
 var ejsMate = require('ejs-mate');
 var bodyParser = require('body-parser');
-
+var path = require('path');
 //Informing the server that data will be coming in the JSON Format
 //app.use(express.json());//MiddleWare
 app.set("view engine", "ejs");
-app.set("views","./../../Frontend/views/company");
+app.engine("ejs", ejsMate);
+app.set("views",path.join(__dirname,"./../../Frontend/views/company"));
 app.use(bodyParser.urlencoded({"extended" : true}));
+//Home route
+app.get("/", async (request,response)=>
+{
+    //Also create session for user.
+    response.render("index.ejs");
+});
 
 //Company Services Starts Here
 //This service helps to get all companies from databse
@@ -128,8 +135,8 @@ app.post("/company/request/add", async (request,response)=>
     try
     {
         var name = request.body.name;
-        var authorName = request.body.authorName;
-        var authorEmail = request.body.authorEmail;
+        var authorName = request.body.author_name;
+        var authorEmail = request.body.author_email;
         var authr = new Entities.Author(0,authorEmail,authorName);
         var manager = new Manager.Author();
         
@@ -238,8 +245,8 @@ app.post("/blog/request/accept", async (request,response)=>
     {
        var id = request.body.id;
        var manager = new Manager.BlogRequest();
-       await manager.accept(id);
-       response.send({"success" : true});
+       var blog = await manager.accept(id);
+       response.send({"success" : true, "result" : blog});
     }
     catch(err)
     {

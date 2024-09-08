@@ -4,8 +4,7 @@ details of the author of the blog
 */
 create table author
 (
-    id serial primary key,
-    email text not null unique,
-    name text not null
+    id int auto_increment primary key,
+    email varchar(40) not null unique,
+    name varchar(100) not null
 );
-insert into author (email,name) values ('21bcs138@ietdavv.edu.in','Manan Balwani');

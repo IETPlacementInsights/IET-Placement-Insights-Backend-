@@ -1,21 +1,29 @@
 //The library to connect to postgre sql
-const { Client } = require('pg');
+var mysql = require('mysql2/promise');
 
 //The configuration of the environment variables.
 require('dotenv').config({"path" : "./../.env"});
 
 //Getting the connection string from .env file
-var connectionString = process.env.CONNECTION_STRING;
+var userName = process.env.DATABASE_USER_NAME;
+var password = process.env.DATABASE_PASSWORD;
+var databaseName = process.env.DATABASE_NAME;
+var host = process.env.DATABASE_HOST;
 
 //The function which helps to connect to the database
-async function getConnection()
+async function getPool()
 {
-    var connection = new Client({
-        "connectionString" : connectionString
+    var pool = mysql.createPool({
+        "host" : host,
+        "user" : userName,
+        "password" : password,
+        "database" : databaseName,
+        "connectionLimit" : 10,
+        "waitForConnections" : true,
+        "queueLimit" : 0
     });
-    connection.connect();
-    return connection;
+    return pool;
 }
 
 //The exports are defined so as to use them from everywhere
-module.exports = { getConnection };
+module.exports = { getPool };

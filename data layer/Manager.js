@@ -20,16 +20,15 @@ class Company
     //This method gives all the companies present in the database
     async getAll()
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             var query = `select * from company`;
-            var resultSet = await connection.query(query);
-            var companies = [];
-            //Resultset.rows is an array
-            //Map method access each 
-            //element of the array and we perform an operation on it
-            resultSet.rows.map((row)=>
+            var companies = [];    
+            var [resultSet] = await connection.query(query);
+            resultSet.map((row)=>
             {
                 //Object of type company from entities
                 var company = new Entities.Company(row.id, row.name);
@@ -42,25 +41,31 @@ class Company
             console.log(err);
             throw Error("Cannot get companies");
         }
+        finally
+        {
+            connection.release();
+        }
     }
     
     //This method adds a company to the database
     async add(company)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            var connection = await pool.getConnection();
             
             //Checking whether company already exist in database
             var query = `select id from company where lower(name) = '${company.getName().toLowerCase()}'`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length > 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
                 throw Error(`Company ${company.name} already exists`);
             
             //Inserting the company in the database
-            query = `insert into company (name) values ('${company.getName()}') returning id`;
-            var resultSet = await connection.query(query);
-            var id = resultSet.rows[0].id;
+            query = `insert into company (name) values ('${company.getName()}')`;
+            var [resultSet] = await connection.query(query);
+            var id = resultSet.insertId;
             company.setId(id);
             
             //Sending the company object with id at 
@@ -72,25 +77,31 @@ class Company
             console.log(err);
             throw Error("Cannot add company");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This method updates an exisiting company to the database
     async update(company)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking whether the company is present or not
             var query = `select name from company where id = ${company.getId()}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 throw Error(`Company Id ${company.getId()} does not exist`);
             }
             query = `select id from company where lower(name) = '${company.getName().toLowerCase()}'`;
-            resultSet = await connection.query(query);
-            if(resultSet.rows.length > 0)
+            [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
             {
                 throw Error(`Company with name ${company.getName()} already exist`);
             }
@@ -104,19 +115,25 @@ class Company
             console.log(err);
             throw Error("Cannot update company");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This method deletes an existing company from the database
     async delete(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking whether company exist
             var query = `select name from company where id = ${id}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 throw Error(`Company Id ${id} does not exist`);
             }
@@ -130,12 +147,16 @@ class Company
 
             //Deleting the company
             query = `delete from company where id = ${id}`;
-            connection.query(query);
+            await connection.query(query);
         }
         catch(err)
         {
             console.log(err);
             throw Error("Cannot delete company");
+        }
+        finally
+        {
+            connection.release();
         }
     }
 
@@ -146,12 +167,14 @@ class Company
     */
     async companyExist(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             var query = `select name from company where id = ${id}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
                 return false;
             return true;
         }
@@ -159,6 +182,10 @@ class Company
         {
             console.log(err);
             throw Error("Cannot check for the company");
+        }
+        finally
+        {
+            connection.release();
         }
     }
 }
@@ -170,22 +197,24 @@ class Author
     //This method helps to add author
     async add(author)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Check whether email is already assigned to the author
             var query = `select id from author where email = '${author.getEmail()}'`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length > 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
             {
                 throw Error(`Author ${author.getName()} already exist`);
             }
 
             //Adding the author to the database
-            query = `insert into author (email,name) values ('${author.getEmail()}','${author.getName()}') returning id`;
-            resultSet = await connection.query(query);
-            var id = resultSet.rows[0].id;
+            query = `insert into author (email,name) values ('${author.getEmail()}','${author.getName()}')`;
+            [resultSet] = await connection.query(query);
+            var id = resultSet.insertId;
             author.setId(id);
             
             /*
@@ -199,19 +228,25 @@ class Author
             console.log(err);
             throw Error("Cannot add author");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This method updates the author
     async update(author)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking whether author is present
             var query = `select name from author where id = ${author.getId()}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 throw Error(`Author ${author.getName()} does not exist`);
             }
@@ -219,8 +254,8 @@ class Author
             //Checking whether the upated email is 
             //already assigned to other author
             query = `select name from author where email = '${author.getEmail()}' and id <> ${author.getId()}`;
-            resultSet = await connection.query(query);
-            if(resultSet.rows.length > 0)
+            [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
             {
                 throw Error(`Another user with email ${author.getEmail()} already exist`);
             }
@@ -234,31 +269,41 @@ class Author
             console.log(err);
             throw Error("Cannot update author");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This method deletes the author
     async delete(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking whether author exist or not
             var query = `select name from author where id = ${id}`;       
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 throw Error(`Author ${id} does not exist`);
             }
 
             //Deleting author from database
             query = `delete from author where id = ${id}`;
-            connection.query(query);
+            await connection.query(query);
         }
         catch(err)
         {
             console.log(err);
             throw Error("Cannot delete author");
+        }
+        finally
+        {
+            connection.release();
         }
     }
 
@@ -269,18 +314,20 @@ class Author
     */
     async getByEmail(authorEmail)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking the author exist for an email
             var query = `select * from author where email = '${authorEmail}'`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 return null;
             }
-            var row = resultSet.rows[0];
+            var row = resultSet[0];
             var author = new Entities.Author(row.id,row.email,row.name);     
             return author;
         }
@@ -288,6 +335,10 @@ class Author
         {
             console.log(err);
             throw Error("Cannot get author");
+        }
+        finally
+        {
+            connection.release();
         }
     }
 }
@@ -298,9 +349,11 @@ class Blog
     //Getting all the blogs with particular company id
     async getByCompanyId(companyId)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Validation for whether company exist
             var company = new Company();
@@ -310,10 +363,10 @@ class Blog
             }
 
             //Selecting blogs from database
-            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,TO_CHAR(blog.date, 'dd Month YYYY') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where company.id = ${companyId}`;
-            var resultSet = await connection.query(query);
+            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where company.id = ${companyId}`;
+            var [resultSet] = await connection.query(query);
             var blogs = [];
-            resultSet.rows.map((row)=>
+            resultSet.map((row)=>
             {    
                 var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role);
                 blog.setDate(row.date);
@@ -327,14 +380,20 @@ class Blog
             console.log(err);
             throw Error("Cannot get blogs");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This function add the blog to the database
     async add(blog)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             var company = new Company();
             //Using the company exist function to check whether company is their
             if(await company.companyExist(blog.getCompany().getId()) == false)
@@ -342,9 +401,9 @@ class Blog
                 throw Error(`Company ${blog.getCompanyId()} does not exist`);
             }
             //Inserting the blog to the database
-            var query = `insert into blog (company_id,content,selection_status,author_id,role,date) values (${blog.getCompany().getId()},'${blog.getContent()}',${blog.getSelectionStatus()},${blog.getAuthor().getId()}, '${blog.getRole()}',(select current_date)) returning id`;
-            var resultSet = await connection.query(query);
-            blog.setId(resultSet.rows[0].id);
+            var query = `insert into blog (company_id,content,selection_status,author_id,role,date) values (${blog.getCompany().getId()},'${blog.getContent()}',${blog.getSelectionStatus()},${blog.getAuthor().getId()}, '${blog.getRole()}',current_date())`;
+            var [resultSet] = await connection.query(query);
+            blog.setId(resultSet.insertId);
             
             //Returning blog object with the id at which blog is added 
             //to the server
@@ -355,19 +414,25 @@ class Blog
             console.log(err);
             throw Error("Cannot add blog");
         } 
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This function deletes the blog
     async delete(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             
             //Checking whether the blog exist
             var query = `select selection_status from blog where id = ${id}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
             {
                 throw Error(`Blog with id ${id} does not exist`);
             }
@@ -381,6 +446,10 @@ class Blog
             console.log(err);
             throw Error("Cannot delete Blog");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 }
 
@@ -391,14 +460,17 @@ class CompanyRequest
     //the database
     async getAll()
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
-            var query = `select distinct(name), count (author_id) from company_request group by name`;
-            var resultSet = await connection.query(query);
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select distinct(name), count (author_id) as count from company_request group by name`;
+            var [resultSet] = await connection.query(query);
             var requests = [];
-            resultSet.rows.map((row)=>
+            resultSet.map((row)=>
             {
+                console.log(row);
                 var request = new Entities.CompanyRequest(row.name,null);
                 request.setCount(row.count);
                 requests.push(request);
@@ -412,18 +484,24 @@ class CompanyRequest
             console.log(err);
             throw Error("Cannot get requests");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This function is used to add the request to database
     async add(request)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             //Check whether company exist in database
             var query = `select id from company where lower(name) = '${request.getName().toLowerCase()}'`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length > 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
             {
                 throw Error(`Company ${request.getName()} already exist`);
             }
@@ -437,20 +515,26 @@ class CompanyRequest
             console.log(err);
             throw Error("Cannot add request");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This function accepts the request
     async accept(name)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             //get all the authors who made same request.
             var query = `select author.name,author.email from company_request inner join author on author.id = company_request.author_id where lower(company_request.name) = '${name.toLowerCase()}'`;
             //send mail to all the authors
-            var resultSet = await connection.query(query);
+            var [resultSet] = await connection.query(query);
             var authors = [];
-            resultSet.rows.map((row)=>
+            resultSet.map((row)=>
             {
                 var author = new Entities.Author(0,row.email,row.name);
                 authors.push(author);
@@ -490,22 +574,28 @@ class CompanyRequest
             console.log(err);
             throw Error("Cannot accept request");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 
     //This function rejects the request
     async reject(name)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             //get all the authors who made same request.
             var query = `select author.name,author.email from company_request inner join author on author.id = company_request.author_id where lower(company_request.name) = '${name.toLowerCase()}'`;
             //send mail to all the authors
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
                 throw Error(`No request for company ${name}`);
             var authors = [];
-            resultSet.rows.map((row)=>
+            resultSet.map((row)=>
             {
                 var author = new Entities.Author(0,row.email,row.name);
                 authors.push(author);
@@ -536,6 +626,10 @@ class CompanyRequest
             console.log(err);
             throw Error("Cannot reject request");
         }
+        finally
+        {
+            connection.release();
+        }
     }
 }
 
@@ -545,13 +639,15 @@ class BlogRequest
 {
     async getAll()
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
-            var query = `select author.name as author_name, author.id as author_id, author.email, company.id as company_id, company.name as company_name , blog_request.id, blog_request.content, blog_request.selection_status, blog_request.role,blog_request.date from author inner join blog_request on author.id = blog_request.author_id inner join company on company.id = blog_request.company_id`;
-            var resultSet = await connection.query(query);
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select author.name as author_name, author.id as author_id, author.email, company.id as company_id, company.name as company_name , blog_request.id, blog_request.content, blog_request.selection_status, blog_request.role,DATE_FORMAT(blog_request.date, '%D %M %Y') as date from author inner join blog_request on author.id = blog_request.author_id inner join company on company.id = blog_request.company_id`;
+            var [resultSet] = await connection.query(query);
             var blogRequests = [];
-            resultSet.rows.map((row)=>
+            resultSet.map((row)=>
             {
                 var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name), row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role,row.date);
                 blogRequests.push(blog);
@@ -563,17 +659,23 @@ class BlogRequest
             console.log(err);
             throw Error("Cannot get Requests for the blogs");
         }
+        finally
+        {
+            connection.release();
+        }
     }
     async add(blog)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             if(await new Company().companyExist(blog.getCompany().getId()) == false)
             {
                 throw Error(`Company id ${blog.getCompany().getId()} does not exist`);
             }
-            var query = `insert into blog_request (content,selection_status,author_id, company_id,role,date) values ('${blog.getContent()}', '${blog.getSelectionStatus()}', ${blog.getAuthor().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', (select current_date))`;
+            var query = `insert into blog_request (content,selection_status,author_id, company_id,role,date) values ('${blog.getContent()}', ${blog.getSelectionStatus()}, ${blog.getAuthor().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', current_date())`;
             await connection.query(query);
         }
         catch(err)
@@ -581,17 +683,23 @@ class BlogRequest
             console.log(err);
             throw Error("Cannot add request for blog");
         }
+        finally
+        {
+            connection.release();
+        }
     }
     async reject(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             var query = `select author.name as author_name, author.email, company.name as company_name from author inner join blog_request on author.id = blog_request.author_id inner join company on blog_request.company_id = company.id where blog_request.id = ${id}`
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
                 throw Error(`Cannot find request for blog of id : ${id}`)
-            var row = resultSet.rows[0];
+            var row = resultSet[0];
             var author = new Entities.Author(-1,row.email,row.author_name);
             var company = new Entities.Company(0,row.company_name);
             var subject = `Blog Post Rejection`;
@@ -611,17 +719,23 @@ class BlogRequest
             console.log(err);
             throw Error("Cannot reject request");
         }
+        finally
+        {
+            connection.release();
+        }
     }
     async accept(id)
     {
+        var connection;
         try
         {
-            var connection = await connector.getConnection();
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
             var query = `select author.name as author_name, author.email, author.id as author_id, blog_request.content, blog_request.selection_status, blog_request.date, blog_request.role, company.id as company_id, company.name as company_name from author inner join blog_request on author.id = blog_request.author_id inner join company on blog_request.company_id = company.id where blog_request.id = ${id}`;
-            var resultSet = await connection.query(query);
-            if(resultSet.rows.length == 0)
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
                 throw Error(`Blog request for id ${id} does not exist`);
-            var row = resultSet.rows[0];
+            var row = resultSet[0];
             var company = new Entities.Company(row.company_id,row.company_name);
             var author = new Entities.Author(row.author_id,row.email,row.author_name);
             var blog = new Entities.Blog(0,company,row.content,row.selection_status,author,row.role,row.date);
@@ -635,15 +749,20 @@ class BlogRequest
             content = content+`<p>Best regards,</p>`;
             content = content+`<p>IET-PlacementInsights<br>IETDAVV, Indore</p>`;
             var blogManager = new Blog();
-            await blogManager.add(blog);
+            var blog = await blogManager.add(blog);
             var query = `delete from blog_request where id = ${id}`;
             await connection.query(query);
             email.sendEmails(author.getEmail(),subject,content);
+            return blog;
         }
         catch(err)
         {
             console.log(err);
             throw Error("Cannot accept the request");
+        }
+        finally
+        {
+            connection.release();
         }
     }
 }
