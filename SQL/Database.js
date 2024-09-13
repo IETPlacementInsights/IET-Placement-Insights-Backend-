@@ -1,6 +1,7 @@
 var mysql = require('mysql2');
 require('dotenv').config({"path" : "./../.env"});
 var file = require('fs').promises;
+var encrypter = require('./../utilities/Encryption');
 var userName = process.env.DATABASE_USER_NAME;
 var password = process.env.DATABASE_PASSWORD;
 var databaseName = process.env.DATABASE_NAME;
@@ -93,11 +94,24 @@ async function runQuery()
     {
         if(error)
         {
+            console.log(error);
             console.log("Cannot create table company");
         }
         else
         {
             console.log("Created table company");
+        }
+    });
+    query = `insert into company (name) values ('General Blogs')`;
+    connection.query(query,function(error,result)
+    {
+        if(error)
+        {
+            console.log("Cannot add a company");
+        }
+        else
+        {
+            console.log("Added a company");
         }
     });
     query = await readFile("BlogRequest.sql");
@@ -122,6 +136,34 @@ async function runQuery()
         else
         {
             console.log("Created table blog");
+        }
+    });
+    query = await readFile("User.sql");
+    connection.query(query,function(error,result)
+    {
+        if(error)
+        {
+            console.log("Cannot create table user");
+        }
+        else
+        {
+            console.log("Created table user");
+        }
+    });
+    var adminEmail = process.env.ADMIN_EMAIL;
+    var adminPassword = await encrypter.encryptPassword(process.env.ADMIN_PASSWORD);
+    var adminName = process.env.ADMIN_NAME;
+
+    query = `insert into user (email,password,name,role) values ('${adminEmail}', '${adminPassword}', '${adminName}', 'admin')`;
+    connection.query(query,function(error,result)
+    {
+        if(error)
+        {
+            console.log("Cannot create an admin");
+        }
+        else
+        {
+            console.log("Created an admin");
         }
     });
     connection.end(function(error)

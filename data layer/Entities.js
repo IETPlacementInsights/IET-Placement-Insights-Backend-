@@ -145,7 +145,7 @@ class Blog
     }
 }
 
-//This is request class which helps to add request for a company
+//This is company request class which helps to add request for a company
 class CompanyRequest
 {
     //Initialising the class
@@ -182,7 +182,57 @@ class CompanyRequest
     }
 }
 
-//Request api for adding blogs to database
+//This is the DTO for user which helps for transferring data
+//for login and logout
+class User
+{
+    constructor(id,email,password)
+    {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+    }
+    getId()
+    {
+        return this.id;
+    }
+    setId(id)
+    {
+        this.id = id;
+    }
+    getEmail()
+    {
+        return this.email;
+    }
+    setEmail(email)
+    {
+        this.email = email;
+    }
+    getPassword()
+    {
+        return this.password;
+    }
+    setPassword(password)
+    {
+        this.password = password
+    }
+    getName()
+    {
+        return this.name;
+    }
+    setName(name)
+    {
+        this.name = name;
+    }
+    getRole()
+    {
+        return this.role;
+    }
+    setRole(role)
+    {
+        this.role = role;
+    }
+}
 
 //Exporting entitiies
-module.exports = { Company, Author, Blog, CompanyRequest };
+module.exports = { Company, Author, Blog, CompanyRequest, User };

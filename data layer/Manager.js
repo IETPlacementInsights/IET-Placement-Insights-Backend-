@@ -767,5 +767,90 @@ class BlogRequest
     }
 }
 
+//This is the DAO for the User to help for login and logout functionality
+class User
+{
+    async getUserByEmail(email)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select * from user where email = '${email}'`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
+            {
+                return null;
+            }
+            var row = resultSet[0];
+            var user = new Entities.User(row.id,row.email,row.password);
+            user.setName(row.name);
+            user.setRole(row.role);
+            return user;
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Cannot get user");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async add(user)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select name from user where email = '${user.getEmail()}'`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
+            {
+                throw Error(`User with email ${user.getEmail()} already exist`);            
+            }
+            query = `insert into user (email,password,name,role) values('${user.getEmail()}', '${user.getPassword()}', '${user.getName()}', '${user.getPassword()}')`;
+            await connection.query(query);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Unable to add User");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async update(user)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            var connection = await pool.getConnection();
+            var query = `select email from user where email = '${user.getEmail()}'`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
+            {
+                throw Error(`User with email ${user.getEmail()} does not exist`);
+            }
+            query = `updte user set password = '${user.getPassword()}' where email = '${user.getEmail()}'`;
+            await connection.query(query);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Unable to update password");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+}
 //Exporting Manager classes
-module.exports = { Company, Author, Blog, CompanyRequest, BlogRequest };
+module.exports = { Company, Author, Blog, CompanyRequest, BlogRequest, User };

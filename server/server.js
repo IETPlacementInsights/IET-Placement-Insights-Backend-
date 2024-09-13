@@ -23,19 +23,115 @@ var ejs = require('ejs');
 var ejsMate = require('ejs-mate');
 var bodyParser = require('body-parser');
 var path = require('path');
+var encrypter = require('./../utilities/Encryption');
+var session = require('express-session');
 //Informing the server that data will be coming in the JSON Format
 //app.use(express.json());//MiddleWare
 app.set("view engine", "ejs");
 app.engine("ejs", ejsMate);
 app.set("views",path.join(__dirname,"./../../Frontend/views/company"));
 app.use(bodyParser.urlencoded({"extended" : true}));
-//Home route
-app.get("/", async (request,response)=>
+app.use(session({
+    "secret" : "IET Placement Insights",
+    "resave" : false,
+    "saveUninitialized" : false
+}));
+//Function to check whether session is present or not
+function checkSession(request)
 {
-    //Also create session for user.
+    if(request.session)
+    {
+        if(!request.session.user)
+            return false;
+        if(request.session.user.email && request.session.user.email != null && request.session.user.role && request.session.user.role != null)
+            return true;
+    }
+    return false;
+}
+
+//These API's are for testing purpose only
+app.get("/", (request,response)=>
+{
     response.render("index.ejs");
 });
+app.get("/about", (request,response)=>
+{
+    response.render("about.ejs");
+});
 
+//Session creation and destroy code starts here
+app.post("/login", async (request,response)=>
+{
+    try
+    {
+        var manager = new Manager.User();
+        var email = request.body.email;
+        var user = await manager.getUserByEmail(email);
+        var password = user.getPassword();
+        var pass = request.body.password;
+        if(await encrypter.comparePassword(password,pass) == false)
+        {
+            response.send("Unauthorised User");
+        }
+        request.session.user = user;
+        response.send("Logged in");
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+app.post("/logout", (request,response)=>
+{
+    request.session.destroy((error)=>
+    {
+        if(error)
+            response.send("Cannot log out of the session");
+    });
+    response.send("Logged out of the session");
+});
+//Session destroy code ends here
+
+//User service starts here
+app.post("/user/add", async (request,response)=>
+{
+    try
+    {
+        var email = request.body.email;
+        var name = request.body.name;
+        var password = encrypter.encryptPassword(request.body.password);
+        var user = new Entities.User(0,email,password);
+        user.setName(name);
+        user.setRole("author");
+        var manager = new Manager.User();
+        await manager.add(user);
+        response.send({"success" : true});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+app.post("/user/update", async (request,response)=>
+{
+    try
+    {
+        var email = request.body.email;
+        var password = encrypter.encryptPassword(request.body.password);
+        var user = new Entities.User(-1,email,password);
+        var manager = new Manager.User();
+        await manager.update(user);
+        response.send({"success" : true});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+//User service ends here
 //Company Services Starts Here
 //This service helps to get all companies from databse
 app.get("/company/getAll",async (request,response)=>
@@ -56,6 +152,11 @@ app.get("/company/getAll",async (request,response)=>
 //This service helps to delete an existing company's data from database
 app.delete("/company/delete", async (request,response)=>
 {
+    if(checkSession(request) == false || request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var id = request.body.id;
@@ -94,9 +195,15 @@ app.get("/blog/getAll/:companyId",async (request,response)=>
 //This service deletes a blog
 app.delete("/blog/delete", async (request,response)=>
 {
+    if(checkSession(request) == false)
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var id = request.body.id;
+        //Validation that the owner of the blog is deleting the blog
         var manager = new Manager.Blog(); 
         await manager.delete(id);
         response.send({"success" : true});
@@ -116,6 +223,11 @@ app.delete("/blog/delete", async (request,response)=>
 //This service gets all requests
 app.get("/company/request/getAll", async (request,response)=>
 {
+    if(checkSession(request) == false || request.session.user.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var manager = new Manager.CompanyRequest();
@@ -132,6 +244,11 @@ app.get("/company/request/getAll", async (request,response)=>
 //This service adds a request
 app.post("/company/request/add", async (request,response)=>
 {
+    if(checkSession(request) == false)
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var name = request.body.name;
@@ -162,6 +279,11 @@ app.post("/company/request/add", async (request,response)=>
 //This service accepts the request
 app.post("/company/request/accept", async (request,response)=>
 {
+    if(checkSession(request) == false && request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var name = request.body.name;
@@ -179,6 +301,11 @@ app.post("/company/request/accept", async (request,response)=>
 //This service rejects the request
 app.post("/company/request/reject", async (request,response)=>
 {
+    if(checkSession(request) == false && request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var name = request.body.name;
@@ -199,6 +326,11 @@ app.post("/company/request/reject", async (request,response)=>
 //This method displays all the requests for the blogs
 app.get("/blog/request/getAll", async (request,response)=>
 {
+    if(checkSession(request) == false && request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var manager = new Manager.BlogRequest();
@@ -214,6 +346,11 @@ app.get("/blog/request/getAll", async (request,response)=>
 //This method adds a request for the blog
 app.post("/blog/request/add", async (request,response)=>
 {
+    if(checkSession(request) == false)
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var content = request.body.content;
@@ -241,6 +378,11 @@ app.post("/blog/request/add", async (request,response)=>
 //This service helps admin to accept a blog
 app.post("/blog/request/accept", async (request,response)=>
 {
+    if(checkSession(request) == false && request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
        var id = request.body.id;
@@ -257,6 +399,11 @@ app.post("/blog/request/accept", async (request,response)=>
 //This service helps to reject the request for the blog
 app.post("/blog/request/reject", async (request,response)=>
 {
+    if(checkSession(request) == false && request.session.role != "admin")
+    {
+        response.send("You are not authorized");
+        return;
+    }
     try
     {
         var id = request.body.id;
