@@ -72,6 +72,7 @@ app.post("/login", async (request,response)=>
         if(await encrypter.comparePassword(password,pass) == false)
         {
             response.send("Unauthorised User");
+            return;
         }
         request.session.user = user;
         response.send("Logged in");
@@ -100,7 +101,7 @@ app.post("/user/add", async (request,response)=>
     {
         var email = request.body.email;
         var name = request.body.name;
-        var password = encrypter.encryptPassword(request.body.password);
+        var password = await encrypter.encryptPassword(request.body.password);
         var user = new Entities.User(0,email,password);
         user.setName(name);
         user.setRole("author");
@@ -119,7 +120,7 @@ app.post("/user/update", async (request,response)=>
     try
     {
         var email = request.body.email;
-        var password = encrypter.encryptPassword(request.body.password);
+        var password = await encrypter.encryptPassword(request.body.password);
         var user = new Entities.User(-1,email,password);
         var manager = new Manager.User();
         await manager.update(user);

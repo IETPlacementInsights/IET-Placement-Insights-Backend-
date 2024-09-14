@@ -812,7 +812,7 @@ class User
             {
                 throw Error(`User with email ${user.getEmail()} already exist`);            
             }
-            query = `insert into user (email,password,name,role) values('${user.getEmail()}', '${user.getPassword()}', '${user.getName()}', '${user.getPassword()}')`;
+            query = `insert into user (email,password,name,role) values('${user.getEmail()}', '${user.getPassword()}', '${user.getName()}', '${user.getRole()}')`;
             await connection.query(query);
         }
         catch(err)
@@ -838,7 +838,7 @@ class User
             {
                 throw Error(`User with email ${user.getEmail()} does not exist`);
             }
-            query = `updte user set password = '${user.getPassword()}' where email = '${user.getEmail()}'`;
+            query = `update user set password = '${user.getPassword()}' where email = '${user.getEmail()}'`;
             await connection.query(query);
         }
         catch(err)
