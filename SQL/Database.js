@@ -114,18 +114,6 @@ async function runQuery()
             console.log("Added a company");
         }
     });
-    query = await readFile("BlogRequest.sql");
-    connection.query(query,function(error,result)
-    {
-        if(error)
-        {
-            console.log("Cannot create table blog_request");
-        }
-        else
-        {
-            console.log("Created table blog_request");
-        }
-    });
     query = await readFile("Blog.sql");
     connection.query(query,function(error,result)
     {
@@ -148,6 +136,19 @@ async function runQuery()
         else
         {
             console.log("Created table user");
+        }
+    });
+    query = await readFile("Likes.sql");
+    connection.query(query,function(error,result)
+    {
+        if(error)
+        {
+            console.log(error);
+            console.log("Cannot create table likes");
+        }
+        else
+        {
+            console.log("Created table likes");
         }
     });
     var adminEmail = process.env.ADMIN_EMAIL;

@@ -11,6 +11,7 @@ create table blog
     date date not null,
     content text not null,
     selection_status boolean not null,
+    acceptance_status boolean not null,
     foreign key (company_id) references company(id),
     foreign key (author_id) references author(id),
     primary key (company_id,author_id)

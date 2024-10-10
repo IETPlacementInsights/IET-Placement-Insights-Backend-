@@ -67,7 +67,6 @@ class Company
             var [resultSet] = await connection.query(query);
             var id = resultSet.insertId;
             company.setId(id);
-            
             //Sending the company object with id at 
             //which company is added to the server
             return company;
@@ -177,6 +176,32 @@ class Company
             if(resultSet.length == 0)
                 return false;
             return true;
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Cannot check for the company");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+
+    //This method returns the company object if company id exist
+    async getCompanyById(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select * from company where id = ${id}`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length == 0)
+                return null;
+            var company = new Entities.Company(resultSet[0].id,resultSet[0].name);
+            return company;
         }
         catch(err)
         {
@@ -361,15 +386,15 @@ class Blog
             {
                 throw Error(`Company id ${companyId} does not exist`);
             }
-
             //Selecting blogs from database
-            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where company.id = ${companyId}`;
+            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where company.id = ${companyId} and blog.acceptance_status = true order by likes_count`;
             var [resultSet] = await connection.query(query);
             var blogs = [];
             resultSet.map((row)=>
             {    
                 var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role);
                 blog.setDate(row.date);
+                blog.setLikeCount(row.likes_count);
                 blogs.push(blog);
             });
             //Sending blogs to the server
@@ -386,6 +411,36 @@ class Blog
         }
     }
 
+    //This method shows all the blogs present in the database on the basis of date
+    async getAll()
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.acceptance_status = true order by date`
+            var [resultSet] = await connection.query(query);
+            var blogs = [];
+            resultSet.map((row)=>
+            {
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role);
+                blog.setDate(row.date);
+                blog.setLikeCount(row.likes_count);
+                blogs.push(blog);
+            });
+            return blogs;
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
     //This function add the blog to the database
     async add(blog)
     {
@@ -451,6 +506,62 @@ class Blog
             connection.release();
         }
     }
+
+    //This method helps to get all blogs written by a particular author
+    async getByAuthor(email)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where author.email = '${email}'`;
+            var [resultSet] = (await connection).query(query);
+            var blogs = [];
+            resultSet.map((row)=>
+            {
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role,row.date);
+                blogs.push(blog);
+            });
+        }   
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Unable to get blogs");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+
+    //This method helps to give email of a user who written the blog for blog id
+    async getEmailForBlog(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select author.email as email from author inner join blog on author.id = blog.author_id where blog.id = ${id}`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length != 1)
+            {
+                throw Error("Unable to find email in the database");
+            }
+            var email = resultSet.email;
+            return email;
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error("Cannot get email for the blog");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
 }
 
 //This is the DAO Class for Request
@@ -470,7 +581,6 @@ class CompanyRequest
             var requests = [];
             resultSet.map((row)=>
             {
-                console.log(row);
                 var request = new Entities.CompanyRequest(row.name,null);
                 request.setCount(row.count);
                 requests.push(request);
@@ -637,6 +747,8 @@ class CompanyRequest
 //the blog on the website
 class BlogRequest
 {
+
+    //This method is for getting all the requests for the blog
     async getAll()
     {
         var connection;
@@ -644,7 +756,7 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.id as author_id, author.email, company.id as company_id, company.name as company_name , blog_request.id, blog_request.content, blog_request.selection_status, blog_request.role,DATE_FORMAT(blog_request.date, '%D %M %Y') as date from author inner join blog_request on author.id = blog_request.author_id inner join company on company.id = blog_request.company_id`;
+            var query = `select author.name as author_name, author.id as author_id, author.email, company.id as company_id, company.name as company_name , blog.id, blog.content, blog.selection_status, blog.role,DATE_FORMAT(blog.date, '%D %M %Y') as date from author inner join blog on author.id = blog.author_id inner join company on company.id = blog.company_id where blog.acceptance_status = false`;
             var [resultSet] = await connection.query(query);
             var blogRequests = [];
             resultSet.map((row)=>
@@ -664,6 +776,8 @@ class BlogRequest
             connection.release();
         }
     }
+
+    //This method adds a request for the blog publishing
     async add(blog)
     {
         var connection;
@@ -675,7 +789,7 @@ class BlogRequest
             {
                 throw Error(`Company id ${blog.getCompany().getId()} does not exist`);
             }
-            var query = `insert into blog_request (content,selection_status,author_id, company_id,role,date) values ('${blog.getContent()}', ${blog.getSelectionStatus()}, ${blog.getAuthor().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', current_date())`;
+            var query = `insert into blog (content,selection_status,author_id, company_id,role,date,acceptance_status) values ('${blog.getContent()}', ${blog.getSelectionStatus()}, ${blog.getAuthor().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', current_date(),false)`;
             await connection.query(query);
         }
         catch(err)
@@ -688,6 +802,8 @@ class BlogRequest
             connection.release();
         }
     }
+
+    //This mehtod rejects the request for a blog
     async reject(id)
     {
         var connection;
@@ -695,7 +811,7 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.email, company.name as company_name from author inner join blog_request on author.id = blog_request.author_id inner join company on blog_request.company_id = company.id where blog_request.id = ${id}`
+            var query = `select author.name as author_name, author.email, company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.id = ${id}`
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
                 throw Error(`Cannot find request for blog of id : ${id}`)
@@ -710,7 +826,7 @@ class BlogRequest
             content = content+`<p>If you have any questions or need feedback, please feel free to reach out to us.</p>`;
             content = content+`<p>Best regards,</p>`;
             content = content+`<p>IET-PlacementInsights<br>IETDAVV, Indore</p>`;
-            query = `delete from blog_request where id = ${id}`;
+            query = `delete from blog where id = ${id}`;
             await connection.query(query);
             email.sendEmails(author.getEmail(),subject,content);
         }
@@ -724,6 +840,8 @@ class BlogRequest
             connection.release();
         }
     }
+
+    //This method accepts the blog request
     async accept(id)
     {
         var connection;
@@ -731,7 +849,7 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.email, author.id as author_id, blog_request.content, blog_request.selection_status, blog_request.date, blog_request.role, company.id as company_id, company.name as company_name from author inner join blog_request on author.id = blog_request.author_id inner join company on blog_request.company_id = company.id where blog_request.id = ${id}`;
+            var query = `select author.name as author_name, author.email, author.id as author_id, blog.content, blog.selection_status, blog.date, blog.role, company.id as company_id, company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.id = ${id}`;
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
                 throw Error(`Blog request for id ${id} does not exist`);
@@ -748,9 +866,7 @@ class BlogRequest
             content = content+`<p>Thank you for your contribution!</p>`;
             content = content+`<p>Best regards,</p>`;
             content = content+`<p>IET-PlacementInsights<br>IETDAVV, Indore</p>`;
-            var blogManager = new Blog();
-            var blog = await blogManager.add(blog);
-            var query = `delete from blog_request where id = ${id}`;
+            var query = `update blog set acceptance_status = true where id = ${id}`;
             await connection.query(query);
             email.sendEmails(author.getEmail(),subject,content);
             return blog;
@@ -770,6 +886,8 @@ class BlogRequest
 //This is the DAO for the User to help for login and logout functionality
 class User
 {
+
+    //This method gives the user object from email
     async getUserByEmail(email)
     {
         var connection;
@@ -799,6 +917,8 @@ class User
             connection.release();
         }
     }
+
+    //This method adds a user
     async add(user)
     {
         var connection;
@@ -813,7 +933,10 @@ class User
                 throw Error(`User with email ${user.getEmail()} already exist`);            
             }
             query = `insert into user (email,password,name,role) values('${user.getEmail()}', '${user.getPassword()}', '${user.getName()}', '${user.getRole()}')`;
-            await connection.query(query);
+            var [resultSet] = await connection.query(query);
+            var userId = resultSet.insertId;
+            user.setId(userId);
+            return user;
         }
         catch(err)
         {
@@ -825,6 +948,8 @@ class User
             connection.release();
         }
     }
+
+    //This method updates the password of the user
     async update(user)
     {
         var connection;
@@ -852,5 +977,56 @@ class User
         }
     }
 }
+
+class Like
+{
+    async add(like)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select user_id from likes where user_id = ${like.getUserId()} and blog_id = ${like.getBlogId()}`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length > 0)
+            {
+                return;
+            }
+            query = `insert into likes (user_id, blog_id) values (${like.getUserId()}, ${like.getBlogId()})`;
+            await connection.query(query);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async delete(like)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `delete from likes where blog_id = ${like.getBlogId()} and user_id = ${like.getUserId()}`;
+            await connection.query(query);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+}
+
 //Exporting Manager classes
-module.exports = { Company, Author, Blog, CompanyRequest, BlogRequest, User };
+module.exports = { Company, Author, Blog, CompanyRequest, BlogRequest, User, Like };

@@ -143,6 +143,14 @@ class Blog
     {
         this.date = date;
     }
+    setLikeCount(likeCount)
+    {
+        this.likeCount = likeCount;
+    }
+    getLikeCount()
+    {
+        return this.likeCount;
+    }
 }
 
 //This is company request class which helps to add request for a company
@@ -234,5 +242,30 @@ class User
     }
 }
 
+class Like
+{
+    constructor(userId,blogId)
+    {
+        this.userId = userId;
+        this.blogId = blogId;
+    }
+    getBlogId()
+    {
+        return this.blogId;
+    }
+    setBlogId(blogId)
+    {
+        this.blogId = blogId;
+    }
+    getUserId()
+    {
+        return this.userId;
+    }
+    setUserId(userId)
+    {
+        this.userId = userId;
+    }
+}
+
 //Exporting entitiies
-module.exports = { Company, Author, Blog, CompanyRequest, User };
+module.exports = { Company, Author, Blog, CompanyRequest, User, Like };

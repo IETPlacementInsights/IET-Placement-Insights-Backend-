@@ -17,25 +17,49 @@ for Failure :
 //Loading pre requisites for the server
 var express = require('express');
 var app = express();
+
+//Getting Entities and Manager from data layer
 var Entities = require('./../data layer/Entities');
 var Manager = require('./../data layer/Manager');
+
+//Getting pre requisites for EJS
 var ejs = require('ejs');
 var ejsMate = require('ejs-mate');
+
+//Getting body-parser for getting data in request
 var bodyParser = require('body-parser');
+
+//Getting path library
 var path = require('path');
+
+//Getting library for encryption of user passwords
 var encrypter = require('./../utilities/Encryption');
+
+//Getting session for maintaining sessions at server side
 var session = require('express-session');
-//Informing the server that data will be coming in the JSON Format
-//app.use(express.json());//MiddleWare
+
+var flash = require('connect-flash');
+
+//Setting the view engine
 app.set("view engine", "ejs");
 app.engine("ejs", ejsMate);
+
+//Telling the path of EJS Files
 app.set("views",path.join(__dirname,"./../../Frontend/views/company"));
+
+//Declaring about data will be in urencoded form
 app.use(bodyParser.urlencoded({"extended" : true}));
+
+//Adding the static path for frontend
+app.use(express.static(path.join(__dirname,"./../../Frontend/public")));  // To join current file i.e server.js to custom css/js files directory
+
+//Using the session in server
 app.use(session({
     "secret" : "IET Placement Insights",
     "resave" : false,
     "saveUninitialized" : false
 }));
+
 //Function to check whether session is present or not
 function checkSession(request)
 {
@@ -49,33 +73,248 @@ function checkSession(request)
     return false;
 }
 
-//These API's are for testing purpose only
+app.use(flash());
+
+// Middleware to flash messages
+app.use((request,response,next) => {
+    response.locals.good = request.flash("good");
+    response.locals.bad = request.flash("bad");
+
+    response.locals.path = "/blog/add";
+    response.locals.path2 = request.path;
+
+    // console.log(good, "RS");
+    // console.log(request.flash("good"));    
+    
+    next();
+});
+
+//This API is for rendering the index.ejs file on the client side
 app.get("/", (request,response)=>
 {
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
     response.render("index.ejs");
 });
+app.get("/login", (request,response)=>
+{
+    var error = "";
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }    
+
+    response.render("login.ejs", {error});
+});
+
+app.get("/company/add", (request,response)=>
+{
+    if(checkSession(request) == false)
+    {
+        var error = "";
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("login.ejs", {error});
+        return;
+    } 
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+    response.render("addCompany.ejs");
+});
+
+app.get("/blog/add",async (request,response)=>
+{
+    // console.log(request.path, "-1");
+
+    if(checkSession(request) == false)
+    {
+        var error = "";
+        response.locals.flag = checkSession(request);    
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        
+        response.locals.path = "/blog/add";
+        // console.log(request.path, "0");
+        // response.redirect("/blog/add");
+        response.render("login.ejs", {error});
+        return;
+    }
+
+    var manager = new Manager.Company();
+    var companies = await manager.getAll();
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+
+    // console.log(request.path, "1");
+    // response.redirect("/blog/add");
+    // response.redirect(request.path);
+
+    response.render("addBlog.ejs", {companies});
+});
+
+app.get("/company/add",async (request,response)=>
+{
+    if(checkSession(request) == false)
+    {
+        var error = "";
+        response.locals.flag = checkSession(request);    
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }            
+        response.render("login.ejs", {error});
+        return;
+    }
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+    response.render("addCompany.ejs");
+});
+    
+app.get("/user/add", (request,response)=>
+{
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+    response.render("addUser.ejs", {error : ""});
+});
+
+
+//This API is for rendering the about us page on client side
 app.get("/about", (request,response)=>
 {
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
     response.render("about.ejs");
 });
 
 //Session creation and destroy code starts here
+//This API will check for login credentials of the user and create a session
+//if they are valid else return login page again
 app.post("/login", async (request,response)=>
 {
+    if(checkSession(request) == true)
+    {
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+
+        response.render("index.ejs");
+        return;
+    }    
     try
     {
         var manager = new Manager.User();
         var email = request.body.email;
         var user = await manager.getUserByEmail(email);
+        if(user == null)
+        {
+            var error = "Incorrect Username or Password";
+            response.locals.flag = checkSession(request);
+            response.locals.user = null;
+            if(response.locals.flag == true)
+            {
+                response.locals.user = request.session.user;
+            }
+            response.render("login.ejs", {error});
+            return;
+        }
         var password = user.getPassword();
         var pass = request.body.password;
         if(await encrypter.comparePassword(password,pass) == false)
         {
-            response.send("Unauthorised User");
+            var error = "Incorrect Username or Password";
+
+            response.locals.flag = checkSession(request);
+            response.locals.user = null;
+            if(response.locals.flag == true)
+            {
+                response.locals.user = request.session.user;
+            }
+
+            request.flash("bad", error);
+            response.locals.bad = request.flash("bad");
+            console.log(request.flash("bad"));
+            
+            response.render("login.ejs");
             return;
         }
         request.session.user = user;
-        response.send("Logged in");
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+            // request.flash("good", "You logged in successfully");
+        }
+
+        // showing flash message at top of page when user logged in
+        // request.flash("good") ---> User successfully logged in
+        // request.flash("bad") ---> Login issue with user
+
+        request.flash("good", "Welcome to IET-PlacementInsights!!!");
+        
+        // storing request.flash("good") in local variable so that we can access this good variable in flash.ejs
+        response.locals.good = request.flash("good");  
+
+        // console.log(request.flash("good"));
+        // console.log(response.locals.good);
+        // console.log(success);
+
+        // console.log(request.path);
+        // console.log(request.originalUrl);
+        // console.log(request.baseUrl);
+        // console.log(request.session.redirectUrl);
+
+        // response.redirect(request.path);
+
+        // console.log(request.locals.path);
+        // console.log(request.locals.path2);
+
+        // response.redirect("/blog/add");
+
+        // console.log(request.locals.path);
+        // if(response.locals.path == "/blog/add"){
+        //     console.log(request.locals.path);
+        //     response.redirect(request.locals.path);
+        // }
+
+        response.render("index.ejs");
     }
     catch(err)
     {
@@ -83,18 +322,47 @@ app.post("/login", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
-app.post("/logout", (request,response)=>
+
+//This is the logout API which will destory the current session of the user
+app.get("/logout", (request,response)=>
 {
+    if(checkSession(request) == false)
+    {
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+
+        response.render("index.ejs");
+        return;
+    }
+
+    request.flash("good", "You logged out successfully!!!");
+    response.locals.good = request.flash("good");
+
     request.session.destroy((error)=>
     {
         if(error)
-            response.send("Cannot log out of the session");
+        {
+            console.log(error);
+        }
     });
-    response.send("Logged out of the session");
+
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+    response.render("index.ejs");
+    // response.redirect("/");
 });
 //Session destroy code ends here
 
 //User service starts here
+//This API is for creating a user for website
 app.post("/user/add", async (request,response)=>
 {
     try
@@ -106,25 +374,119 @@ app.post("/user/add", async (request,response)=>
         user.setName(name);
         user.setRole("author");
         var manager = new Manager.User();
-        await manager.add(user);
-        response.send({"success" : true});
+        user = await manager.add(user);
+        request.session.user = user;
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        request.flash("good", "Welcome to IET-PlacementInsights!!!");
+        
+        // storing request.flash("good") in local variable so that we can access this good variable in flash.ejs
+        response.locals.good = request.flash("good");
+        response.render("index.ejs");
     }
     catch(err)
     {
         console.log(err);
-        response.send({"success" : false, "error" : err.message});
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        var error = err.message;
+
+        request.flash("bad",error);
+        response.locals.bad = request.flash("bad");
+
+        response.render("addUser.ejs");
+
+        //response.send({"success" : false, "error" : err.message});
     }
 });
-app.post("/user/update", async (request,response)=>
+
+app.get("/user/update", (request,response)=>
 {
+    if(checkSession(request) == false)
+    {
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("login.ejs");
+        return;
+    }
+    response.locals.flag = checkSession(request);
+    response.locals.user = null;
+    if(response.locals.flag == true)
+    {
+        response.locals.user = request.session.user;
+    }
+
+    response.render("changePasswordPage.ejs");
+});
+
+//This API is for updating the password of the user
+app.post("/user/update", async (request,response)=>
+{    
     try
     {
-        var email = request.body.email;
-        var password = await encrypter.encryptPassword(request.body.password);
+        var email = request.session.user.email;
+        var oldPassword = request.body.oldPassword;
+        var newPassword = request.body.newPassword;
+        var confirmPassword = request.body.confirmPassword; 
+        if(newPassword != confirmPassword)
+        {
+            response.locals.flag = checkSession(request);
+            response.locals.user = null;
+         
+            if(response.locals.flag == true)
+            {
+                response.locals.user = request.session.user;
+            }
+
+            request.flash("bad","Password doesn't match");
+            response.locals.bad = request.flash("bad");
+
+            response.render("changePasswordPage.ejs");
+        }
+        if(await encrypter.comparePassword(request.session.user.password,oldPassword) == false)
+        {
+            //Add a flash incorrect old password
+            response.locals.flag = checkSession(request);
+            response.locals.user = null;
+            if(response.locals.flag == true)
+            {
+                response.locals.user = request.session.user;
+            }
+
+            request.flash("bad","Old password is incorrect!!!");
+            response.locals.bad = request.flash("bad");
+
+            response.render("changePasswordPage.ejs");
+        }
+
+        var password = await encrypter.encryptPassword(newPassword);
         var user = new Entities.User(-1,email,password);
         var manager = new Manager.User();
         await manager.update(user);
-        response.send({"success" : true});
+
+        request.session.user.password = password;
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+
+        response.render("index.ejs");
+        //response.send({"success" : true});
     }
     catch(err)
     {
@@ -133,6 +495,7 @@ app.post("/user/update", async (request,response)=>
     }
 });
 //User service ends here
+
 //Company Services Starts Here
 //This service helps to get all companies from databse
 app.get("/company/getAll",async (request,response)=>
@@ -141,7 +504,14 @@ app.get("/company/getAll",async (request,response)=>
     {
         var manager = new Manager.Company();
         var companies = await manager.getAll();
-        response.send({"success" : true, "result" : companies});
+        //response.send({"success" : true, "result" : companies});
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("companyList.ejs", {companies});
     }
     catch(err)
     {
@@ -175,7 +545,6 @@ app.delete("/company/delete", async (request,response)=>
 
 
 //Blog Service Starts Here
-
 //This service gives all the blogs related to company id
 app.get("/blog/getAll/:companyId",async (request,response)=>
 {
@@ -183,7 +552,30 @@ app.get("/blog/getAll/:companyId",async (request,response)=>
     {
         var companyId = request.params.companyId;
         var manager = new Manager.Blog();
+        var mngr = new Manager.Company();
+        var company = await mngr.getCompanyById(companyId);
         var blogs = await manager.getByCompanyId(companyId);
+        //response.send({"success" : true, "result" : blogs});
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("blogShow.ejs", {blogs,company});
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+app.get("/blog/getAll", async (request,response)=>
+{
+    try
+    {
+        var manager = new Manager.Blog();
+        var blogs = await manager.getAll();
         response.send({"success" : true, "result" : blogs});
     }
     catch(err)
@@ -194,7 +586,7 @@ app.get("/blog/getAll/:companyId",async (request,response)=>
 });
 
 //This service deletes a blog
-app.delete("/blog/delete", async (request,response)=>
+app.post("/blog/delete", async (request,response)=>
 {
     if(checkSession(request) == false)
     {
@@ -207,7 +599,17 @@ app.delete("/blog/delete", async (request,response)=>
         //Validation that the owner of the blog is deleting the blog
         var manager = new Manager.Blog(); 
         await manager.delete(id);
-        response.send({"success" : true});
+        var companyId = request.body.companyId;
+        var blogs = await manager.getByCompanyId(companyId);
+        var mngr = new Manager.Company();
+        var company = await mngr.getCompanyById(companyId);
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("blogShow.ejs", {blogs,company});
     }
     catch(err)
     {
@@ -215,12 +617,9 @@ app.delete("/blog/delete", async (request,response)=>
         response.send({"success" : false,"error" : err.message});
     }
 });
-
 //Blog service ends Here
 
-
 //CompanyRequest service starts here
-
 //This service gets all requests
 app.get("/company/request/getAll", async (request,response)=>
 {
@@ -232,8 +631,15 @@ app.get("/company/request/getAll", async (request,response)=>
     try
     {
         var manager = new Manager.CompanyRequest();
-        var requests = await manager.getAll();
-        response.send({"success" : true, "result" : requests});
+        var companyRequests = await manager.getAll();
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("companyRequest.ejs", {companyRequests});
+        //response.send({"success" : true, "result" : requests});
     }
     catch(err)
     {
@@ -253,8 +659,8 @@ app.post("/company/request/add", async (request,response)=>
     try
     {
         var name = request.body.name;
-        var authorName = request.body.author_name;
-        var authorEmail = request.body.author_email;
+        var authorName = request.session.user.name;
+        var authorEmail = request.session.user.email;
         var authr = new Entities.Author(0,authorEmail,authorName);
         var manager = new Manager.Author();
         
@@ -265,10 +671,21 @@ app.post("/company/request/add", async (request,response)=>
             //If does not exist adding the author
             author = await manager.add(new Entities.Author(0,authr.email,authr.name));
         }
+
         var companyRequest = new Entities.CompanyRequest(name,author);
         manager = new Manager.CompanyRequest();
         await manager.add(companyRequest);
-        response.send({"success" : true});
+        
+        request.flash("good", "Your company request added successfully!!!");
+        response.locals.good = request.flash("good");        
+
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("index.ejs");
     }
     catch(err)
     {
@@ -290,7 +707,14 @@ app.post("/company/request/accept", async (request,response)=>
         var name = request.body.name;
         var manager = new Manager.CompanyRequest();
         var company = await manager.accept(name);
-        response.send({"success" : true, "result" : company});
+        var companyRequests = await manager.getAll();
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("companyRequest.ejs", {companyRequests});
     }
     catch(err)
     {
@@ -312,7 +736,14 @@ app.post("/company/request/reject", async (request,response)=>
         var name = request.body.name;
         var manager = new Manager.CompanyRequest();
         await manager.reject(name);
-        response.send({"success" : true});
+        var companyRequests = await manager.getAll();
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("companyRequest.ejs", {companyRequests});
     }
     catch(err)
     {
@@ -320,7 +751,6 @@ app.post("/company/request/reject", async (request,response)=>
         response.send({"success" : false, err : err.message});
     }
 });
-    
 //CompanyRequest service ends here
 
 //BlogRequest service starts here
@@ -336,7 +766,14 @@ app.get("/blog/request/getAll", async (request,response)=>
     {
         var manager = new Manager.BlogRequest();
         var blogRequests = await manager.getAll();
-        response.send({"success" : true, "result" : blogRequests});
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("blogRequest.ejs", {blogRequests});
+        //response.send({"success" : true, "result" : blogRequests});
     }
     catch(err)
     {
@@ -344,6 +781,7 @@ app.get("/blog/request/getAll", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+
 //This method adds a request for the blog
 app.post("/blog/request/add", async (request,response)=>
 {
@@ -358,17 +796,30 @@ app.post("/blog/request/add", async (request,response)=>
         var selectionStatus = request.body.selection_status;
         var role = request.body.role;
         var companyId = request.body.company_id;
-        var authorName = request.body.author_name;
-        var authorEmail = request.body.author_email;    
+        var authorName = request.session.user.name;
+        var authorEmail = request.session.user.email;    
         var author = await new Manager.Author().getByEmail(authorEmail)
         if(author == null)
         {
             author = await new Manager.Author().add(new Entities.Author(-1,authorEmail,authorName));
         }
+
         var blog = new Entities.Blog(-1,new Entities.Company(companyId,""),content,selectionStatus,author,role,"");
         var manager = new Manager.BlogRequest();
         await manager.add(blog);
-        response.send({"success" : true});
+
+        request.flash("good", "Your blog request added successfully!!!");
+        response.locals.good = request.flash("good");    
+
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+
+        // response.send({"success" : true});
+        response.render("index.ejs");
     }
     catch(err)
     {
@@ -376,6 +827,7 @@ app.post("/blog/request/add", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+
 //This service helps admin to accept a blog
 app.post("/blog/request/accept", async (request,response)=>
 {
@@ -389,7 +841,14 @@ app.post("/blog/request/accept", async (request,response)=>
        var id = request.body.id;
        var manager = new Manager.BlogRequest();
        var blog = await manager.accept(id);
-       response.send({"success" : true, "result" : blog});
+       var blogRequests = await manager.getAll();
+       response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+       response.render("blogRequest.ejs", {blogRequests});
     }
     catch(err)
     {
@@ -397,6 +856,7 @@ app.post("/blog/request/accept", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
+
 //This service helps to reject the request for the blog
 app.post("/blog/request/reject", async (request,response)=>
 {
@@ -410,7 +870,14 @@ app.post("/blog/request/reject", async (request,response)=>
         var id = request.body.id;
         var manager = new Manager.BlogRequest();
         await manager.reject(id);
-        response.send({"success" : true});
+        var blogRequests = await manager.getAll();
+        response.locals.flag = checkSession(request);
+        response.locals.user = null;
+        if(response.locals.flag == true)
+        {
+            response.locals.user = request.session.user;
+        }
+        response.render("blogRequest.ejs", {blogRequests});
     }
     catch(err)
     {
@@ -418,9 +885,55 @@ app.post("/blog/request/reject", async (request,response)=>
         response.send({"success" : false, "error" : err.message});
     }
 });
-
 //BlogRequest service ends here
-    
+
+//Like service starts here
+app.post("/like", async (request,response)=>
+{
+    if(checkSession(request) == false)
+    {
+        response.send("You are not authorised");
+    }
+    try
+    {
+        var blogId = request.body.blog_id;
+        var userId  = request.session.user.id;
+        var url = request.body.url;
+        var manager = new Manager.Like();
+        var like = new Entities.Like(userId,blogId);
+        await manager.add(like);
+        response.redirect(url);     
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false, "error" : err.message});
+    }
+});
+app.post("/dislike", async (request,response)=>
+{
+    if(checkSession(request) == false)
+    {
+        response.send("You are unauthorised");
+    }
+    try
+    {
+        var userId = request.session.user.id;
+        var blogId = request.body.blog_id;
+        var url = request.body.url;
+        var like = new Entities.Like(userId,blogId);
+        var manager = new Manager.Like();
+        await manager.delete(like);
+        response.redirect(url);
+    }
+    catch(err)
+    {
+        console.log(err);
+        response.send({"success" : false,"error" : err.message});
+    }
+});
+//Like service ends here
+
 //We define the port number on which server is needed to be started
 //Also if port is occupied then we display the error
 app.listen(5050,(err)=>
