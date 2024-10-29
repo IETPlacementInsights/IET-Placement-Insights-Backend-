@@ -35,7 +35,7 @@ Follow these steps to set up and run the backend:
     DATABASE_NAME=YOUR_DATABASE_NAME
     STUDENT_PORTAL_BASE_URL=http://localhost:5173
     ADMIN_PORTAL_BASE_URL=http://localhost:3000
-    
+
 3. **Initialize Database**
     ```bash
    cd SQL   
@@ -44,3 +44,6 @@ Follow these steps to set up and run the backend:
     ```bash
    cd ../server   
    node server.js
+
+## Thank You
+## Happy Coding !!!
