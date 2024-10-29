@@ -18,7 +18,7 @@ async function getPool()
         "user" : userName,
         "password" : password,
         "database" : databaseName,
-        "connectionLimit" : 10,
+        "connectionLimit" : 100,
         "waitForConnections" : true,
         "queueLimit" : 0
     });

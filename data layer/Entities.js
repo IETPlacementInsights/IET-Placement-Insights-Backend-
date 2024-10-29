@@ -31,43 +31,13 @@ class Company
     {
         return this.name;
     }
-}
-
-//Author entity for storing the author data
-class Author
-{
-    //Initialise Author
-    constructor(id,email,name)
+    setCount(count)
     {
-        this.id = id;
-        this.email = email;
-        this.name = name;
+        this.count = count;
     }
-    
-    //Getter and Setter of the Author
-    setId(id)
+    getCount()
     {
-        this.id = id;
-    }
-    getId()
-    {
-        return this.id;
-    }
-    setEmail(email)
-    {
-        this.email = email;
-    }
-    getEmail()
-    {
-        return this.email;
-    }
-    setName(name)
-    {
-        this.name = name;
-    }
-    getName()
-    {
-        return this.name;
+        return this.count;
     }
 }
 
@@ -75,15 +45,16 @@ class Author
 class Blog
 {
     //Initialising blog class
-    constructor(id,company,content,selectionStatus,author,role,date)
+    constructor(id,company,content,selectionStatus,user,role,date,tags)
     {
         this.id = id;
         this.company = company;
         this.content = content;
         this.selectionStatus = selectionStatus;
-        this.author = author;
+        this.user = user;
         this.role = role;
         this.date = date;
+        this.tags = tags;
     }
     
     //Getter and Setter for blog class
@@ -119,13 +90,13 @@ class Blog
     {
         return this.selectionStatus;
     }
-    setAuthor(author)
+    setUser(user)
     {
-        this.author = author;
+        this.user = user;
     }
-    getAuthor()
+    getUser()
     {
-        return this.author;
+        return this.user;
     }
     getRole()
     {
@@ -151,16 +122,24 @@ class Blog
     {
         return this.likeCount;
     }
+    setTags(tags)
+    {
+        this.tags = tags;
+    }
+    getTags()
+    {
+        return this.tags;
+    }
 }
 
 //This is company request class which helps to add request for a company
 class CompanyRequest
 {
     //Initialising the class
-    constructor(name,author)
+    constructor(name,user)
     {
         this.name = name;
-        this.author = author;
+        this.user = user;
     }
 
     //Getter Setter of the request entity
@@ -172,13 +151,13 @@ class CompanyRequest
     {
         this.name = name;
     }
-    getAuthor()
+    getUser()
     {
-        return this.author;
+        return this.user;
     }
-    setAuthor(author)
+    setUser(user)
     {
-        return this.author = author;
+        this.user = user;
     }
     setCount(count)
     {
@@ -194,11 +173,12 @@ class CompanyRequest
 //for login and logout
 class User
 {
-    constructor(id,email,password)
+    constructor(id,email,name,showContactDetails)
     {
         this.id = id;
         this.email = email;
-        this.password = password;
+        this.name = name;
+        this.showContactDetails = showContactDetails;
     }
     getId()
     {
@@ -216,14 +196,6 @@ class User
     {
         this.email = email;
     }
-    getPassword()
-    {
-        return this.password;
-    }
-    setPassword(password)
-    {
-        this.password = password
-    }
     getName()
     {
         return this.name;
@@ -232,13 +204,77 @@ class User
     {
         this.name = name;
     }
-    getRole()
+    getAlternateEmail()
     {
-        return this.role;
+        return this.alternateEmail;
+    }
+    setAlternateEmail(alternateEmail)
+    {
+        this.alternateEmail = alternateEmail;
+    }
+    getPhoneNumber()
+    {
+        return this.phoneNumber;
+    }
+    setPhoneNumber(phoneNumber)
+    {
+        this.phoneNumber = phoneNumber;
+    }
+    getLinkedinProfile()
+    {
+        return this.linkedinProfile;
+    }
+    setLinkedinProfile(linkedinProfile)
+    {
+        this.linkedinProfile = linkedinProfile;
+    }
+    getGithubProfile()
+    {
+        return this.githubProfile;
+    }
+    setGithubProfile(githubProfile)
+    {
+        this.githubProfile = githubProfile;
+    }
+    getCodingProfile()
+    {
+        return this.codingProfile;
+    }
+    setCodingProfile(codingProfile)
+    {
+        this.codingProfile = codingProfile;
+    }
+    getBranch()
+    {
+        return this.branch;
+    }
+    setBranch(branch)
+    {
+        this.branch = branch;
+    }
+    getPassoutYear()
+    {
+        return this.passoutYear;
+    }
+    setPassoutYear(passoutYear)
+    {
+        this.passoutYear = passoutYear;
     }
     setRole(role)
     {
         this.role = role;
+    }
+    getRole()
+    {
+        return this.role;
+    }
+    setShowContactDetails(showContactDetails)
+    {
+        this.showContactDetails = showContactDetails;
+    }
+    getShowContactDetails()
+    {
+        return this.showContactDetails;
     }
 }
 
@@ -268,4 +304,4 @@ class Like
 }
 
 //Exporting entitiies
-module.exports = { Company, Author, Blog, CompanyRequest, User, Like };
+module.exports = { Company, Blog, CompanyRequest, User, Like };

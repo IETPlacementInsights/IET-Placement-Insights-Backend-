@@ -18,27 +18,30 @@ const email = require('./../utilities/Email');
 class Company
 {
     //This method gives all the companies present in the database
-    async getAll()
+    async getAllWithCount()
     {
         var connection;
         try
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select * from company`;
-            var companies = [];    
+            var query = `select company.id, company.name, count(blog.id) as count from blog inner join company on company.id = blog.company_id where blog.acceptance_status = true group by company.name`;
+            var companies = [];
             var [resultSet] = await connection.query(query);
             resultSet.map((row)=>
             {
                 //Object of type company from entities
                 var company = new Entities.Company(row.id, row.name);
+                company.setCount(row.count);
                 companies.push(company);
             });
+            connection.release();
             return companies;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get companies");
         }
         finally
@@ -47,6 +50,36 @@ class Company
         }
     }
     
+    async getAll()
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select * from company`;
+            var companies = [];
+            var [resultSet] = await connection.query(query);
+            resultSet.map((row)=>
+            {
+                //Object of type company from entities
+                var company = new Entities.Company(row.id, row.name);
+                companies.push(company);
+            });
+            connection.release();
+            return companies;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
+            throw Error("Cannot get companies");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
     //This method adds a company to the database
     async add(company)
     {
@@ -60,8 +93,9 @@ class Company
             var query = `select id from company where lower(name) = '${company.getName().toLowerCase()}'`;
             var [resultSet] = await connection.query(query);
             if(resultSet.length > 0)
+            {
                 throw Error(`Company ${company.name} already exists`);
-            
+            }
             //Inserting the company in the database
             query = `insert into company (name) values ('${company.getName()}')`;
             var [resultSet] = await connection.query(query);
@@ -69,11 +103,13 @@ class Company
             company.setId(id);
             //Sending the company object with id at 
             //which company is added to the server
+            connection.release();
             return company;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot add company");
         }
         finally
@@ -112,6 +148,7 @@ class Company
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot update company");
         }
         finally
@@ -151,6 +188,7 @@ class Company
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot delete company");
         }
         finally
@@ -173,6 +211,7 @@ class Company
             connection = await pool.getConnection();
             var query = `select name from company where id = ${id}`;
             var [resultSet] = await connection.query(query);
+            connection.release();
             if(resultSet.length == 0)
                 return false;
             return true;
@@ -180,6 +219,7 @@ class Company
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot check for the company");
         }
         finally
@@ -198,6 +238,7 @@ class Company
             connection = await pool.getConnection();
             var query = `select * from company where id = ${id}`;
             var [resultSet] = await connection.query(query);
+            connection.release();
             if(resultSet.length == 0)
                 return null;
             var company = new Entities.Company(resultSet[0].id,resultSet[0].name);
@@ -206,160 +247,8 @@ class Company
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot check for the company");
-        }
-        finally
-        {
-            connection.release();
-        }
-    }
-}
-
-
-//This class has DAO for the author of the blog
-class Author
-{
-    //This method helps to add author
-    async add(author)
-    {
-        var connection;
-        try
-        {
-            var pool = await connector.getPool();
-            connection = await pool.getConnection();
-            
-            //Check whether email is already assigned to the author
-            var query = `select id from author where email = '${author.getEmail()}'`;
-            var [resultSet] = await connection.query(query);
-            if(resultSet.length > 0)
-            {
-                throw Error(`Author ${author.getName()} already exist`);
-            }
-
-            //Adding the author to the database
-            query = `insert into author (email,name) values ('${author.getEmail()}','${author.getName()}')`;
-            [resultSet] = await connection.query(query);
-            var id = resultSet.insertId;
-            author.setId(id);
-            
-            /*
-            Sending the id at which the author is added
-            with all other data of the author.
-            */
-            return author;
-        }
-        catch(err)
-        {
-            console.log(err);
-            throw Error("Cannot add author");
-        }
-        finally
-        {
-            connection.release();
-        }
-    }
-
-    //This method updates the author
-    async update(author)
-    {
-        var connection;
-        try
-        {
-            var pool = await connector.getPool();
-            connection = await pool.getConnection();
-            
-            //Checking whether author is present
-            var query = `select name from author where id = ${author.getId()}`;
-            var [resultSet] = await connection.query(query);
-            if(resultSet.length == 0)
-            {
-                throw Error(`Author ${author.getName()} does not exist`);
-            }
-
-            //Checking whether the upated email is 
-            //already assigned to other author
-            query = `select name from author where email = '${author.getEmail()}' and id <> ${author.getId()}`;
-            [resultSet] = await connection.query(query);
-            if(resultSet.length > 0)
-            {
-                throw Error(`Another user with email ${author.getEmail()} already exist`);
-            }
-
-            //Updating the author in database
-            query = `update author set name = '${author.getName()}', email = '${author.getEmail()}' where id = ${author.getId()}`;
-            await connection.query(query);
-        }
-        catch(err)
-        {
-            console.log(err);
-            throw Error("Cannot update author");
-        }
-        finally
-        {
-            connection.release();
-        }
-    }
-
-    //This method deletes the author
-    async delete(id)
-    {
-        var connection;
-        try
-        {
-            var pool = await connector.getPool();
-            connection = await pool.getConnection();
-            
-            //Checking whether author exist or not
-            var query = `select name from author where id = ${id}`;       
-            var [resultSet] = await connection.query(query);
-            if(resultSet.length == 0)
-            {
-                throw Error(`Author ${id} does not exist`);
-            }
-
-            //Deleting author from database
-            query = `delete from author where id = ${id}`;
-            await connection.query(query);
-        }
-        catch(err)
-        {
-            console.log(err);
-            throw Error("Cannot delete author");
-        }
-        finally
-        {
-            connection.release();
-        }
-    }
-
-    /*
-    This method helps to get author object from
-    email of the author this method is not used in
-    the server
-    */
-    async getByEmail(authorEmail)
-    {
-        var connection;
-        try
-        {
-            var pool = await connector.getPool();
-            connection = await pool.getConnection();
-            
-            //Checking the author exist for an email
-            var query = `select * from author where email = '${authorEmail}'`;
-            var [resultSet] = await connection.query(query);
-            if(resultSet.length == 0)
-            {
-                return null;
-            }
-            var row = resultSet[0];
-            var author = new Entities.Author(row.id,row.email,row.name);     
-            return author;
-        }
-        catch(err)
-        {
-            console.log(err);
-            throw Error("Cannot get author");
         }
         finally
         {
@@ -387,22 +276,24 @@ class Blog
                 throw Error(`Company id ${companyId} does not exist`);
             }
             //Selecting blogs from database
-            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where company.id = ${companyId} and blog.acceptance_status = true order by likes_count`;
+            var query = `select user.name as user_name,user.email,blog.user_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count, blog.tags from user inner join blog on user.id = blog.user_id inner join company on blog.company_id = company.id where company.id = ${companyId} and blog.acceptance_status = true order by likes_count DESC`;
             var [resultSet] = await connection.query(query);
             var blogs = [];
             resultSet.map((row)=>
             {    
-                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role);
-                blog.setDate(row.date);
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.User(row.user_id,row.email,row.user_name),row.role,row.date,row.tags);
                 blog.setLikeCount(row.likes_count);
                 blogs.push(blog);
             });
+            console.log("BLOGS : "+blogs);
             //Sending blogs to the server
+            connection.release();
             return blogs;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get blogs");
         }
         finally
@@ -419,21 +310,22 @@ class Blog
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.acceptance_status = true order by date`
+            var query = `select user.name as user_name,user.email,blog.user_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) from likes where likes.blog_id = blog.id) as likes_count,blog.tags from user inner join blog on user.id = blog.user_id inner join company on blog.company_id = company.id where blog.acceptance_status = true order by date DESC`;
             var [resultSet] = await connection.query(query);
             var blogs = [];
             resultSet.map((row)=>
             {
-                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role);
-                blog.setDate(row.date);
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.User(row.user_id,row.email,row.user_name),row.role,row.date,row.tags);
                 blog.setLikeCount(row.likes_count);
                 blogs.push(blog);
             });
+            connection.release();
             return blogs;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error(err.message);
         }
         finally
@@ -442,7 +334,7 @@ class Blog
         }
     }
     //This function add the blog to the database
-    async add(blog)
+    /*async add(blog)
     {
         var connection;
         try
@@ -473,7 +365,7 @@ class Blog
         {
             connection.release();
         }
-    }
+    }*/
 
     //This function deletes the blog
     async delete(id)
@@ -491,7 +383,8 @@ class Blog
             {
                 throw Error(`Blog with id ${id} does not exist`);
             }
-
+            query = `delete from likes where blog_id = ${id}`;
+            await connection.query(query);
             //Deleting the blog from database
             query = `delete from blog where id = ${id}`;
             await connection.query(query);
@@ -499,6 +392,7 @@ class Blog
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot delete Blog");
         }
         finally
@@ -513,20 +407,25 @@ class Blog
         var connection;
         try
         {
+            //Also add tags to this query
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name,author.email,blog.author_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where author.email = '${email}'`;
-            var [resultSet] = (await connection).query(query);
+            var query = `select user.name as user_name,user.email,blog.user_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name,blog.tags,(select count(user_id) from likes where likes.blog_id = blog.id) as likes_count from user inner join blog on user.id = blog.user_id inner join company on blog.company_id = company.id where user.email = '${email}'`;
+            var [resultSet] = connection.query(query);
             var blogs = [];
             resultSet.map((row)=>
             {
-                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role,row.date);
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name),row.content,row.selection_status,new Entities.User(row.user_id,row.email,row.user_name),row.role,row.date,row.tags);
+                blog.setLikeCount(row.likes_count);
                 blogs.push(blog);
             });
+            connection.release();
+            return blogs;
         }   
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Unable to get blogs");
         }
         finally
@@ -543,18 +442,20 @@ class Blog
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.email as email from author inner join blog on author.id = blog.author_id where blog.id = ${id}`;
+            var query = `select user.email as email from user inner join blog on user.id = blog.user_id where blog.id = ${id}`;
             var [resultSet] = await connection.query(query);
             if(resultSet.length != 1)
             {
                 throw Error("Unable to find email in the database");
             }
             var email = resultSet.email;
+            connection.release();
             return email;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get email for the blog");
         }
         finally
@@ -576,7 +477,7 @@ class CompanyRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select distinct(name), count (author_id) as count from company_request group by name`;
+            var query = `select distinct(name), count (user_id) as count from company_request group by name order by name`;
             var [resultSet] = await connection.query(query);
             var requests = [];
             resultSet.map((row)=>
@@ -585,13 +486,14 @@ class CompanyRequest
                 request.setCount(row.count);
                 requests.push(request);
             });
-            
+            connection.release();
             //Returning the requests from database to server
             return requests;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get requests");
         }
         finally
@@ -617,12 +519,13 @@ class CompanyRequest
             }
             //Check for author exist or not and add if it does not exist
             //then add request to database.
-            query = `insert into company_request values ('${request.getName()}',${request.getAuthor().getId()})`;
+            query = `insert into company_request values ('${request.getName()}',${request.getUser().getId()})`;
             await connection.query(query);
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot add request");
         }
         finally
@@ -640,13 +543,13 @@ class CompanyRequest
             var pool = await connector.getPool();
             connection = await pool.getConnection();
             //get all the authors who made same request.
-            var query = `select author.name,author.email from company_request inner join author on author.id = company_request.author_id where lower(company_request.name) = '${name.toLowerCase()}'`;
+            var query = `select user.name,user.email from company_request inner join user on user.id = company_request.user_id where lower(company_request.name) = '${name.toLowerCase()}'`;
             //send mail to all the authors
             var [resultSet] = await connection.query(query);
             var authors = [];
             resultSet.map((row)=>
             {
-                var author = new Entities.Author(0,row.email,row.name);
+                var author = new Entities.User(0,row.email,row.name);
                 authors.push(author);
             });
             authors.map((author)=>
@@ -677,11 +580,13 @@ class CompanyRequest
             
             //Returning the company with id at which 
             //company is added
+            connection.release();
             return comp;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot accept request");
         }
         finally
@@ -699,7 +604,7 @@ class CompanyRequest
             var pool = await connector.getPool();
             connection = await pool.getConnection();
             //get all the authors who made same request.
-            var query = `select author.name,author.email from company_request inner join author on author.id = company_request.author_id where lower(company_request.name) = '${name.toLowerCase()}'`;
+            var query = `select user.name,user.email from company_request inner join user on user.id = company_request.user_id where lower(company_request.name) = '${name.toLowerCase()}'`;
             //send mail to all the authors
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
@@ -707,7 +612,7 @@ class CompanyRequest
             var authors = [];
             resultSet.map((row)=>
             {
-                var author = new Entities.Author(0,row.email,row.name);
+                var author = new Entities.User(0,row.email,row.name);
                 authors.push(author);
             });
             authors.map((author)=>
@@ -734,6 +639,7 @@ class CompanyRequest
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot reject request");
         }
         finally
@@ -756,19 +662,21 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.id as author_id, author.email, company.id as company_id, company.name as company_name , blog.id, blog.content, blog.selection_status, blog.role,DATE_FORMAT(blog.date, '%D %M %Y') as date from author inner join blog on author.id = blog.author_id inner join company on company.id = blog.company_id where blog.acceptance_status = false`;
+            var query = `select user.name as user_name, user.id as user_id, user.email, company.id as company_id, company.name as company_name , blog.id, blog.content, blog.selection_status, blog.role,DATE_FORMAT(blog.date, '%D %M %Y') as date, blog.tags from user inner join blog on user.id = blog.user_id inner join company on company.id = blog.company_id where blog.acceptance_status = false order by date DESC`;
             var [resultSet] = await connection.query(query);
             var blogRequests = [];
             resultSet.map((row)=>
             {
-                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name), row.content,row.selection_status,new Entities.Author(row.author_id,row.email,row.author_name),row.role,row.date);
+                var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name), row.content,row.selection_status,new Entities.User(row.user_id,row.email,row.user_name),row.role,row.date,row.tags);
                 blogRequests.push(blog);
             });
+            connection.release();
             return blogRequests;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get Requests for the blogs");
         }
         finally
@@ -789,12 +697,13 @@ class BlogRequest
             {
                 throw Error(`Company id ${blog.getCompany().getId()} does not exist`);
             }
-            var query = `insert into blog (content,selection_status,author_id, company_id,role,date,acceptance_status) values ('${blog.getContent()}', ${blog.getSelectionStatus()}, ${blog.getAuthor().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', current_date(),false)`;
+            var query = `insert into blog (content,selection_status,user_id, company_id,role,date,acceptance_status,tags) values ('${blog.getContent()}', ${blog.getSelectionStatus()}, ${blog.getUser().getId()}, ${blog.getCompany().getId()}, '${blog.getRole()}', current_date(),false,JSON_ARRAY(${blog.getTags()}))`;
             await connection.query(query);
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot add request for blog");
         }
         finally
@@ -811,12 +720,12 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.email, company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.id = ${id}`
+            var query = `select user.name as user_name, user.email, company.name as company_name from user inner join blog on user.id = blog.user_id inner join company on blog.company_id = company.id where blog.id = ${id}`
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
                 throw Error(`Cannot find request for blog of id : ${id}`)
             var row = resultSet[0];
-            var author = new Entities.Author(-1,row.email,row.author_name);
+            var author = new Entities.User(-1,row.email,row.user_name);
             var company = new Entities.Company(0,row.company_name);
             var subject = `Blog Post Rejection`;
             var content = `<h2 style="color: #f44336;">Blog Post Submission - Rejected</h2>`
@@ -833,6 +742,7 @@ class BlogRequest
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot reject request");
         }
         finally
@@ -849,14 +759,13 @@ class BlogRequest
         {
             var pool = await connector.getPool();
             connection = await pool.getConnection();
-            var query = `select author.name as author_name, author.email, author.id as author_id, blog.content, blog.selection_status, blog.date, blog.role, company.id as company_id, company.name as company_name from author inner join blog on author.id = blog.author_id inner join company on blog.company_id = company.id where blog.id = ${id}`;
+            var query = `select user.name as user_name, user.email, user.id as user_id, company.name as company_name from user inner join blog on user.id = blog.user_id inner join company on company.id = blog.company_id where blog.id = ${id}`;
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
                 throw Error(`Blog request for id ${id} does not exist`);
             var row = resultSet[0];
-            var company = new Entities.Company(row.company_id,row.company_name);
-            var author = new Entities.Author(row.author_id,row.email,row.author_name);
-            var blog = new Entities.Blog(0,company,row.content,row.selection_status,author,row.role,row.date);
+            var company = new Entities.Company(-1,row.company_name);
+            var author = new Entities.User(row.user_id,row.email,row.user_name);
             var subject = `Blog Post Acceptance`;
             var content = `<h2 style="color: #4CAF50;">Blog Post Submission - Accepted</h2>`;
             content = content+`<p>Dear ${author.getName()},</p>`;
@@ -869,11 +778,11 @@ class BlogRequest
             var query = `update blog set acceptance_status = true where id = ${id}`;
             await connection.query(query);
             email.sendEmails(author.getEmail(),subject,content);
-            return blog;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot accept the request");
         }
         finally
@@ -886,9 +795,44 @@ class BlogRequest
 //This is the DAO for the User to help for login and logout functionality
 class User
 {
+    //This method gives all details of the user
+    async getById(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select * from user where id = ${id}`;
+            var [resultSet] = await connection.query(query);
+            if(resultSet.length != 1)
+                return null;
+            var row = resultSet[0];
+            var user = new Entities.User(row.id,row.email,row.name,row.show_contact_details);
+            user.setAlternateEmail(row.alternate_email);
+            user.setLinkedinProfile(row.linkedin_profile);
+            user.setPhoneNumber(row.phone_number);
+            user.setCodingProfile(row.coding_profile);
+            user.setGithubProfile(row.github_profile);
+            user.setBranch(row.branch);
+            user.setPassoutYear(row.passout_year);
+            connection.release();
+            return user;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
+            response.send({"success" : false, "error" : err.message});
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
 
     //This method gives the user object from email
-    async getUserByEmail(email)
+    async getByEmail(email)
     {
         var connection;
         try
@@ -902,14 +846,14 @@ class User
                 return null;
             }
             var row = resultSet[0];
-            var user = new Entities.User(row.id,row.email,row.password);
-            user.setName(row.name);
-            user.setRole(row.role);
+            var user = new Entities.User(row.id,row.email,row.name,row.show_contact_details);
+            connection.release();
             return user;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Cannot get user");
         }
         finally
@@ -932,15 +876,17 @@ class User
             {
                 throw Error(`User with email ${user.getEmail()} already exist`);            
             }
-            query = `insert into user (email,password,name,role) values('${user.getEmail()}', '${user.getPassword()}', '${user.getName()}', '${user.getRole()}')`;
+            query = `insert into user (email,name,show_contact_details) values('${user.getEmail()}', '${user.getName()}',0)`;
             var [resultSet] = await connection.query(query);
             var userId = resultSet.insertId;
             user.setId(userId);
+            connection.release();
             return user;
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Unable to add User");
         }
         finally
@@ -955,21 +901,103 @@ class User
         var connection;
         try
         {
+            //CHANGE THIS METHOD TOO.
             var pool = await connector.getPool();
             var connection = await pool.getConnection();
-            var query = `select email from user where email = '${user.getEmail()}'`;
+            var query = `select email from user where id = '${user.getId()}'`;
             var [resultSet] = await connection.query(query);
             if(resultSet.length == 0)
             {
-                throw Error(`User with email ${user.getEmail()} does not exist`);
+                throw Error(`User with id ${user.getId()} does not exist`);
             }
-            query = `update user set password = '${user.getPassword()}' where email = '${user.getEmail()}'`;
+            query = `update user set alternate_email = '${user.getAlternateEmail()}', linkedin_profile = '${user.getLinkedinProfile()}',phone_number = '${user.getPhoneNumber()}',github_profile = '${user.getGithubProfile()}',coding_profile = '${user.getCodingProfile()}',branch = '${user.getBranch()}', passout_year = '${user.getPassoutYear()}', show_contact_details = ${user.getShowContactDetails()} where id = '${user.getId()}'`;
             await connection.query(query);
         }
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error("Unable to update password");
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async getLikesCount(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select count(blog_id) as count from likes where user_id = ${id}`;
+            var [resultSet] = await connection.query(query);
+            connection.release();
+            if(resultSet.length == 0)
+                return 0;
+            return resultSet[0].count;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async getPostCount(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            var connection = await pool.getConnection();
+            var query = `select count(selection_status) as count from blog where user_id = ${id} and acceptance_status = 1`;
+            var [resultSet] = await connection.query(query);
+            connection.release();
+            if(resultSet.length == 0)
+                return 0;
+            return resultSet[0].count;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async getBlogMaxLikes(id)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            var connection = await pool.getConnection();
+            var query = `select user.name as user_name,user.email,blog.user_id, blog.id,blog.content,DATE_FORMAT(blog.date, '%D %M %Y') as date,blog.role,blog.selection_status,blog.company_id,company.name as company_name, (select count(user_id) as likes_count from likes where likes.blog_id = blog.id) as likes_count,blog.tags from user inner join blog on user.id = blog.user_id inner join company on blog.company_id = company.id where blog.acceptance_status = true order by likes_count DESC limit 1`;
+            var [resultSet] = await connection.query(query);
+            connection.release();
+            if(resultSet.length == 0)
+            {
+                return null;
+            }
+            var row = resultSet[0];
+            var blog = new Entities.Blog(row.id,new Entities.Company(row.company_id, row.company_name), row.content,row.selection_status,new Entities.User(row.user_id,row.email,row.user_name),row.role,row.date,row.tags);
+            blog.setLikeCount(row.likes_count);
+            return blog;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
+            throw Error(err.messgae);
         }
         finally
         {
@@ -999,6 +1027,7 @@ class Like
         catch(err)
         {
             console.log(err);
+            connection.release();
             throw Error(err.message);
         }
         finally
@@ -1019,6 +1048,34 @@ class Like
         catch(err)
         {
             console.log(err);
+            connection.release();
+            throw Error(err.message);
+        }
+        finally
+        {
+            connection.release();
+        }
+    }
+    async likeExist(like)
+    {
+        var connection;
+        try
+        {
+            var pool = await connector.getPool();
+            connection = await pool.getConnection();
+            var query = `select user_id from likes where user_id = ${like.getUserId()} and blog_id = ${like.getBlogId()}`;
+            var [resultSet] = await connection.query(query);
+            connection.release();
+            if(resultSet.length == 1)
+            {
+                return true;
+            }
+            return false;
+        }
+        catch(err)
+        {
+            console.log(err);
+            connection.release();
             throw Error(err.message);
         }
         finally
@@ -1029,4 +1086,4 @@ class Like
 }
 
 //Exporting Manager classes
-module.exports = { Company, Author, Blog, CompanyRequest, BlogRequest, User, Like };
+module.exports = { Company, Blog, CompanyRequest, BlogRequest, User, Like };
